@@ -9,6 +9,30 @@ db = client.dbsparta
 import hashlib
 # 기본적으로 요청받은 비밀번호들은 해쉬랩에 의해서 암호화되어 저장됩니다. 따라서, 로그인 정보와 활용하기 위해서는 복호화 과정도 필요합니다.
 
+# 아래는 유효성을 검사하는 메소드입니다.
+def checkValid(id, email, pw, pw_c, nick):
+    if not id.strip():
+        return {'msg':'전송실패'}
+    if email == '0':
+        return {'msg': '이메일을 선택해 주세요!'}
+    if not nick.strip():
+        return {'msg': '닉네임을 입력해 주세요!'}
+    if not nick.isalnum():
+        return {'msg': '닉네임에는 특수문자를 입력할 수 없습니다!'}
+    if int(len(nick)) > 8:
+        return {'msg': '닉네임은 8자 이내로 입력해 주세요!'}
+    if not pw.strip():
+        return {'msg': '비밀번호를 입력해 주세요!'}
+    if pw != pw_c:
+        return {'msg': '비밀번호 일치를 확인해 주세요!'}
+    if pw.isalnum():
+        return {'msg': '비밀번호에 특수문자를 넣어주세요!'}
+    if int(len(pw)) > 12 or 8 > int(len(pw)):
+        return {'msg': '비밀번호는 8~12자로 입력해 주세요!'}
+    pw_hash = hashlib.sha256(pw.encode('utf-8')).hexdigest()
+    db.regi_test.insert_one({'id': id, 'pw': pw_hash, 'nick': nick})
+    return {'msg': '회원가입 완료!'}
+
 @app.route('/join')
 def join():
     return render_template('join.html')
@@ -21,27 +45,5 @@ def api_join():
     pw_con_receive = request.form['pw_conf_give']
     nickname_receive = request.form['nickname_give']
 
-    # 아래는 유효성을 검사하는 코드입니다. 메소드로 만들고 분리시켜 가독성을 향상시키고 싶은데, 아직까지는 좋은 방법이 생각나지 않습니다. :( 아이디 영어 기입 검증도 곧 업데이트 하겠습니다.
-    if not id_receive.strip():
-        return jsonify({'result': 'success', 'msg': '아이디를 입력해 주세요!'})
-    if email_receive == '0':
-        return jsonify({'result': 'success', 'msg': '이메일을 선택해 주세요!'})
-    if not pw_receive.strip():
-        return jsonify({'result': 'success', 'msg': '비밀번호를 입력해 주세요!'})
-    if pw_receive != pw_con_receive:
-        return jsonify({'result': 'success', 'msg': '비밀번호 일치를 확인해 주세요!'})
-    if pw_receive.isalnum():
-        return jsonify({'result': 'success', 'msg': '비밀번호에 특수문자를 넣어주세요!'})
-    if int(len(pw_receive)) > 12 or 8 > int(len(pw_receive)):
-        return jsonify({'result': 'success', 'msg': '비밀번호는 8~12자로 입력해 주세요!'})
-    if not nickname_receive.strip():
-        return jsonify({'result': 'success', 'msg': '닉네임을 입력해 주세요!'})
-    if not nickname_receive.isalnum():
-        return jsonify({'result': 'success', 'msg': '닉네임에는 특수문자를 입력할 수 없습니다!'})
-    if int(len(nickname_receive)) > 8:
-        return jsonify({'result': 'success', 'msg': '닉네임은 8자 이내로 입력해 주세요!'})
-
-    pw_hash = hashlib.sha256(pw_receive.encode('utf-8')).hexdigest()
-    db.regi_test.insert_one({'id': id_receive, 'pw': pw_hash, 'nick': nickname_receive})
-
-    return jsonify({'result': 'success', 'msg':'전송완료!'})
+    result = checkValid(id_receive, email_receive, pw_receive, pw_con_receive, nickname_receive) # 유효성 검사 시작
+    return jsonify(result) # 결과메시지 전송
